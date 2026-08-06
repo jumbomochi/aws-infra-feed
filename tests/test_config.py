@@ -20,9 +20,9 @@ def test_falls_back_to_ssm(aws_env, monkeypatch):
     with mock_aws():
         ssm = boto3.client("ssm")
         for name, value in [
-            ("/aws-infra-feed/telegram-bot-token", "tok"),
-            ("/aws-infra-feed/telegram-chat-id", "123"),
-            ("/aws-infra-feed/gemini-api-key", "gem"),
+            ("/infra-feed/telegram-bot-token", "tok"),
+            ("/infra-feed/telegram-chat-id", "123"),
+            ("/infra-feed/gemini-api-key", "gem"),
         ]:
             ssm.put_parameter(Name=name, Value=value, Type="SecureString")
         assert load_config() == Config("tok", "123", "gem")

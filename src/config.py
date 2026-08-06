@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import boto3
 
-PARAM_PREFIX = "/aws-infra-feed"
+PARAM_PREFIX = "/infra-feed"
 
 
 @dataclass
