@@ -17,7 +17,7 @@
 - All 14 feeds from the spec must appear in `src/feeds.py`.
 - Articles are marked seen in DynamoDB **only after** the Telegram send succeeds. Never before.
 - A single failing feed or a failing Gemini call must never fail the run; a failing Telegram send must fail the run.
-- Secrets (Telegram bot token, chat ID, Gemini API key) come from env vars first, then SSM Parameter Store under `/aws-infra-feed/`. Never hardcoded, never in the SAM template.
+- Secrets (Telegram bot token, chat ID, Gemini API key) come from env vars first, then SSM Parameter Store under `/infra-feed/`. Never hardcoded, never in the SAM template.
 - Lambda modules live flat in `src/` and import each other top-level (`from feeds import ...`), because SAM packages `src/` as the Lambda root. Tests reach them via `pythonpath = ["src"]` in `pyproject.toml`.
 - Run tests from the repo root with `pytest` (or a single test with `pytest tests/test_feeds.py::test_name -v`).
 
@@ -501,7 +501,7 @@ git commit -m "feat: track seen articles in DynamoDB with 90-day TTL"
 
 **Interfaces:**
 - Consumes: `aws_env` fixture (Task 1)
-- Produces: `Config` dataclass with fields `telegram_bot_token: str, telegram_chat_id: str, gemini_api_key: str`; `load_config() -> Config` (env vars `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` / `GEMINI_API_KEY` win; otherwise SSM SecureStrings `/aws-infra-feed/telegram-bot-token`, `/aws-infra-feed/telegram-chat-id`, `/aws-infra-feed/gemini-api-key`)
+- Produces: `Config` dataclass with fields `telegram_bot_token: str, telegram_chat_id: str, gemini_api_key: str`; `load_config() -> Config` (env vars `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` / `GEMINI_API_KEY` win; otherwise SSM SecureStrings `/infra-feed/telegram-bot-token`, `/infra-feed/telegram-chat-id`, `/infra-feed/gemini-api-key`)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -530,9 +530,9 @@ def test_falls_back_to_ssm(aws_env, monkeypatch):
     with mock_aws():
         ssm = boto3.client("ssm")
         for name, value in [
-            ("/aws-infra-feed/telegram-bot-token", "tok"),
-            ("/aws-infra-feed/telegram-chat-id", "123"),
-            ("/aws-infra-feed/gemini-api-key", "gem"),
+            ("/infra-feed/telegram-bot-token", "tok"),
+            ("/infra-feed/telegram-chat-id", "123"),
+            ("/infra-feed/gemini-api-key", "gem"),
         ]:
             ssm.put_parameter(Name=name, Value=value, Type="SecureString")
         assert load_config() == Config("tok", "123", "gem")
@@ -553,7 +553,7 @@ from dataclasses import dataclass
 
 import boto3
 
-PARAM_PREFIX = "/aws-infra-feed"
+PARAM_PREFIX = "/infra-feed"
 
 
 @dataclass
@@ -1150,7 +1150,7 @@ Resources:
         - Statement:
             - Effect: Allow
               Action: ssm:GetParameter
-              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/aws-infra-feed/*
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/infra-feed/*
 
   SeenArticlesTable:
     Type: AWS::DynamoDB::Table
@@ -1207,9 +1207,9 @@ re-delivers tomorrow instead of dropping articles.
 4. **Store the secrets** (region must match where you deploy):
 
    ```bash
-   aws ssm put-parameter --name /aws-infra-feed/telegram-bot-token --type SecureString --value '<TOKEN>'
-   aws ssm put-parameter --name /aws-infra-feed/telegram-chat-id   --type SecureString --value '<CHAT_ID>'
-   aws ssm put-parameter --name /aws-infra-feed/gemini-api-key     --type SecureString --value '<KEY>'
+   aws ssm put-parameter --name /infra-feed/telegram-bot-token --type SecureString --value '<TOKEN>'
+   aws ssm put-parameter --name /infra-feed/telegram-chat-id   --type SecureString --value '<CHAT_ID>'
+   aws ssm put-parameter --name /infra-feed/gemini-api-key     --type SecureString --value '<KEY>'
    ```
 
 ## Deploy
@@ -1307,7 +1307,7 @@ Key facts:
 - `src/telegram.py` is a local module, not the `python-telegram-bot` package.
 - The 14 blogs live in the `FEEDS` dict in `src/feeds.py`; add/remove blogs there.
 - Secrets come from env vars first, then SSM SecureStrings under
-  `/aws-infra-feed/` (see `src/config.py`). Nothing sensitive in the repo.
+  `/infra-feed/` (see `src/config.py`). Nothing sensitive in the repo.
 - Runtime deps go in `src/requirements.txt` (bundled by SAM; boto3 excluded —
   the Lambda runtime provides it). Dev/test deps go in `requirements-dev.txt`.
 - DynamoDB table stores seen article GUIDs with a 90-day TTL (`expires_at`).
