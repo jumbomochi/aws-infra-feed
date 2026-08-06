@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>AWS Storage Blog</title>
+    <link>https://aws.amazon.com/blogs/storage/</link>
+    <item>
+      <title>Announcing Amazon S3 Widgets</title>
+      <link>https://aws.amazon.com/blogs/storage/s3-widgets/</link>
+      <guid isPermaLink="false">https://aws.amazon.com/blogs/storage/?p=1001</guid>
+      <pubDate>Wed, 05 Aug 2026 16:00:00 +0000</pubDate>
+      <description>A short excerpt about S3 widgets.</description>
+      <content:encoded><![CDATA[<p>This is the full body of the S3 widgets announcement, with <b>rich</b> HTML.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>EBS snapshots deep dive</title>
+      <link>https://aws.amazon.com/blogs/storage/ebs-snapshots/</link>
+      <guid isPermaLink="false">https://aws.amazon.com/blogs/storage/?p=1002</guid>
+      <pubDate>Wed, 05 Aug 2026 12:00:00 +0000</pubDate>
+      <description>A short excerpt about EBS snapshots.</description>
+    </item>
+  </channel>
+</rss>
