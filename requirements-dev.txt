@@ -1,0 +1,4 @@
+-r src/requirements.txt
+boto3
+moto[dynamodb,ssm]
+pytest
