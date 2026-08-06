@@ -31,12 +31,19 @@ def test_happy_path_sends_then_marks(wired):
     assert articles[0].summary == "summary of g1"
 
 
-def test_no_new_articles_sends_nothing(wired, monkeypatch):
+def test_no_new_articles_sends_heartbeat(wired, monkeypatch):
     calls, _ = wired
+    sent_messages = []
     monkeypatch.setattr(handler, "filter_new", lambda a: [])
+    monkeypatch.setattr(
+        handler,
+        "send_digest",
+        lambda m, token, chat_id: (sent_messages.extend(m), calls.append("send")),
+    )
     result = handler.lambda_handler({}, None)
-    assert calls == []
-    assert result == {"new_articles": 0, "messages_sent": 0}
+    assert calls == ["send"]  # heartbeat sent, nothing marked seen
+    assert result == {"new_articles": 0, "messages_sent": 1}
+    assert "No new articles today." in sent_messages[0]
 
 
 def test_caps_run_to_newest_articles(wired, monkeypatch, make_article):

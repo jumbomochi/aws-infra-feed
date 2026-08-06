@@ -5,7 +5,7 @@ from config import load_config
 from feeds import fetch_all_feeds
 from state import filter_new, mark_seen
 from summarize import make_client, summarize
-from telegram import format_digest, send_digest
+from telegram import format_digest, format_heartbeat, send_digest
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -24,7 +24,11 @@ def lambda_handler(event, context):
     new_articles = filter_new(articles)
     logger.info("Fetched %d articles, %d new", len(articles), len(new_articles))
     if not new_articles:
-        return {"new_articles": 0, "messages_sent": 0}
+        # Heartbeat: silence would be indistinguishable from a broken bot.
+        send_digest(
+            [format_heartbeat()], config.telegram_bot_token, config.telegram_chat_id
+        )
+        return {"new_articles": 0, "messages_sent": 1}
     if len(new_articles) > MAX_ARTICLES_PER_RUN:
         logger.info(
             "Capping run to the newest %d of %d new articles",

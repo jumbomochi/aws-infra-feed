@@ -4,7 +4,13 @@ import pytest
 import requests
 
 import telegram
-from telegram import SGT, format_digest, send_digest
+from telegram import SGT, format_digest, format_heartbeat, send_digest
+
+
+def test_heartbeat_carries_date_and_no_news_line():
+    message = format_heartbeat(now=datetime(2026, 8, 7, 8, 0, tzinfo=SGT))
+    assert "AWS Blog Digest — Fri 07 Aug 2026" in message
+    assert "No new articles today." in message
 
 
 def test_groups_by_blog_and_escapes_html(make_article):

@@ -16,6 +16,11 @@ SEND_THROTTLE_SECONDS = 1
 DEFAULT_RETRY_AFTER_SECONDS = 5
 
 
+def format_heartbeat(now: datetime | None = None) -> str:
+    now = now or datetime.now(SGT)
+    return f"<b>AWS Blog Digest — {now:%a %d %b %Y}</b>\n\nNo new articles today."
+
+
 def format_digest(articles: list[Article], now: datetime | None = None) -> list[str]:
     now = now or datetime.now(SGT)
     header = f"<b>AWS Blog Digest — {now:%a %d %b %Y}</b>"
