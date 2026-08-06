@@ -50,3 +50,10 @@ def test_none_client_uses_excerpt(make_article):
 
 def test_model_is_pinned():
     assert GEMINI_MODEL == "gemini-3.6-flash"
+
+
+def test_strip_html_preserves_paragraph_boundaries(make_article):
+    article = make_article(
+        excerpt="<p>First paragraph ends here.</p><p>Second starts here.</p>"
+    )
+    assert summarize(None, article) == "First paragraph ends here. Second starts here."

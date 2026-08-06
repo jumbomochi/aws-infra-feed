@@ -44,5 +44,7 @@ def summarize(client, article: Article) -> str:
 
 
 def _strip_html(value: str) -> str:
-    text = re.sub(r"<[^>]+>", "", value)
-    return re.sub(r"\s+", " ", html.unescape(text)).strip()
+    text = re.sub(r"<[^>]+>", " ", value)
+    text = re.sub(r"\s+", " ", html.unescape(text))
+    text = re.sub(r"\s+([.,!?;:])", r"\1", text)
+    return text.strip()
