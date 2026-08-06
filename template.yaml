@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Daily digest of 14 AWS blogs, summarized by Gemini, sent to Telegram.
+
+Resources:
+  DigestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: aws-infra-feed-digest
+      CodeUri: src/
+      Handler: handler.lambda_handler
+      Runtime: python3.13
+      Timeout: 600
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref SeenArticlesTable
+      Events:
+        DailyDigest:
+          Type: Schedule
+          Properties:
+            # 23:50 UTC = 07:50 SGT; digest lands in Telegram by 08:00 SGT.
+            Schedule: cron(50 23 * * ? *)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SeenArticlesTable
+        - Statement:
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/infra-feed/*
+
+  SeenArticlesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: guid
+          AttributeType: S
+      KeySchema:
+        - AttributeName: guid
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+
+Outputs:
+  FunctionName:
+    Value: !Ref DigestFunction
+  TableName:
+    Value: !Ref SeenArticlesTable
