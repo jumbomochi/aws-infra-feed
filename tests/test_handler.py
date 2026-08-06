@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pytest
 
 import handler
@@ -35,6 +37,23 @@ def test_no_new_articles_sends_nothing(wired, monkeypatch):
     result = handler.lambda_handler({}, None)
     assert calls == []
     assert result == {"new_articles": 0, "messages_sent": 0}
+
+
+def test_caps_run_to_newest_articles(wired, monkeypatch, make_article):
+    _, _ = wired
+    monkeypatch.setattr(handler, "MAX_ARTICLES_PER_RUN", 2)
+    articles = [
+        make_article(guid="oldest", published=datetime(2026, 8, 1, tzinfo=timezone.utc)),
+        make_article(guid="newest", published=datetime(2026, 8, 3, tzinfo=timezone.utc)),
+        make_article(guid="middle", published=datetime(2026, 8, 2, tzinfo=timezone.utc)),
+        make_article(guid="undated"),
+    ]
+    monkeypatch.setattr(handler, "fetch_all_feeds", lambda: articles)
+    marked = []
+    monkeypatch.setattr(handler, "mark_seen", lambda a: marked.extend(a))
+    result = handler.lambda_handler({}, None)
+    assert result["new_articles"] == 2
+    assert {a.guid for a in marked} == {"newest", "middle"}
 
 
 def test_failed_send_does_not_mark_seen(wired, monkeypatch):

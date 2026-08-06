@@ -52,3 +52,10 @@ Key facts:
 - DynamoDB table stores seen article GUIDs with a 90-day TTL (`expires_at`).
 - `format_digest` caps summaries at `MAX_SUMMARY_CHARS` (700, pre-escape) and packs
   messages so a blog header always shares a message with its first article.
+- The handler processes at most `MAX_ARTICLES_PER_RUN` (60) newest articles per
+  run — Gemini takes ~5s/article, so an uncapped spike (or first-run backlog)
+  times out the 600s Lambda. The remainder stays unseen and drains next run.
+- Deployed to account 759650489076 (`vsc-sso` profile), ap-southeast-1, stack
+  `aws-infra-feed`. A fresh deploy needs a one-time bootstrap marking the feed
+  backlog seen (fetch + mark_seen without sending), or the first runs will each
+  cap out on stale articles.
