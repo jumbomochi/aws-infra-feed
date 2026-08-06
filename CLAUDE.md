@@ -59,3 +59,11 @@ Key facts:
   `aws-infra-feed`. A fresh deploy needs a one-time bootstrap marking the feed
   backlog seen (fetch + mark_seen without sending), or the first runs will each
   cap out on stale articles.
+- Digests go to the Telegram channel "AWS News Feed" (chat ID in SSM). Quiet
+  days send a heartbeat ("No new articles today") instead of silence.
+- A second schedule (04:30 UTC = 12:30 SGT) invokes the same Lambda with
+  `{"mode": "throwback"}`: `src/throwback.py` pops 3 articles from a shuffled
+  pool (items under `throwback#` keys in the same table, no TTL), posts them
+  with a "🕰 AWS Throwback" header, and marks them sent only after delivery.
+  The pool was seeded once via `scripts/create_throwback_pool.py`; when it
+  drains, throwback runs silently no-op.
