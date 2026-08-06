@@ -25,7 +25,7 @@ def filter_new(articles: list[Article]) -> list[Article]:
 def mark_seen(articles: list[Article]) -> None:
     table = _table()
     expires_at = int(time.time()) + SEEN_TTL_SECONDS
-    with table.batch_writer() as batch:
+    with table.batch_writer(overwrite_by_pkeys=["guid"]) as batch:
         for article in articles:
             batch.put_item(
                 Item={

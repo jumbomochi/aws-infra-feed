@@ -35,3 +35,13 @@ def test_mark_seen_sets_ttl(seen_table, make_article):
     mark_seen([make_article(guid="g1")])
     item = seen_table.get_item(Key={"guid": "g1"})["Item"]
     assert int(item["expires_at"]) > SEEN_TTL_SECONDS
+
+
+def test_mark_seen_allows_duplicate_guids_in_one_batch(seen_table, make_article):
+    articles = [
+        make_article(guid="dup", title="First"),
+        make_article(guid="dup", title="Second"),
+    ]
+    mark_seen(articles)
+    item = seen_table.get_item(Key={"guid": "dup"})["Item"]
+    assert item["guid"] == "dup"

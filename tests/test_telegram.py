@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pytest
+import requests
 
 import telegram
 from telegram import SGT, format_digest, send_digest
@@ -32,11 +33,10 @@ def test_splits_long_digests(make_article):
 
 
 class FakeResponse:
-    def __init__(self, body):
+    def __init__(self, body, status_code=200, text=""):
         self._body = body
-
-    def raise_for_status(self):
-        pass
+        self.status_code = status_code
+        self.text = text or str(body)
 
     def json(self):
         return self._body
@@ -69,8 +69,88 @@ def test_send_digest_raises_on_telegram_error(monkeypatch):
         send_digest(["one"], token="T", chat_id="42")
 
 
+def test_send_digest_sanitizes_connection_error(monkeypatch):
+    def fake_post(*args, **kwargs):
+        raise requests.ConnectionError("https://api.telegram.org/botSECRET/sendMessage")
+
+    monkeypatch.setattr("telegram.requests.post", fake_post)
+    with pytest.raises(RuntimeError) as exc_info:
+        send_digest(["one"], token="SECRET", chat_id="42")
+    assert "SECRET" not in str(exc_info.value)
+
+
+def test_send_digest_sanitizes_http_error_status(monkeypatch):
+    monkeypatch.setattr(
+        "telegram.requests.post",
+        lambda *args, **kwargs: FakeResponse(
+            {}, status_code=500, text="Internal Server Error"
+        ),
+    )
+    with pytest.raises(RuntimeError) as exc_info:
+        send_digest(["one"], token="SECRET", chat_id="42")
+    assert "SECRET" not in str(exc_info.value)
+
+
+def test_send_digest_throttles_between_messages(monkeypatch):
+    monkeypatch.setattr(
+        "telegram.requests.post",
+        lambda *args, **kwargs: FakeResponse({"ok": True}),
+    )
+    sleeps = []
+    monkeypatch.setattr("telegram.time.sleep", lambda seconds: sleeps.append(seconds))
+    send_digest(["one", "two", "three"], token="T", chat_id="42")
+    assert sleeps == [1, 1]
+
+
+def test_send_digest_retries_once_after_429(monkeypatch):
+    responses = [
+        FakeResponse(
+            {"ok": False, "parameters": {"retry_after": 7}},
+            status_code=429,
+            text="rate limited",
+        ),
+        FakeResponse({"ok": True}, status_code=200),
+    ]
+
+    def fake_post(*args, **kwargs):
+        return responses.pop(0)
+
+    monkeypatch.setattr("telegram.requests.post", fake_post)
+    sleeps = []
+    monkeypatch.setattr("telegram.time.sleep", lambda seconds: sleeps.append(seconds))
+    send_digest(["one"], token="T", chat_id="42")
+    assert sleeps == [7]
+    assert responses == []
+
+
+def test_send_digest_raises_after_second_consecutive_429(monkeypatch):
+    responses = [
+        FakeResponse(
+            {"ok": False, "parameters": {"retry_after": 1}},
+            status_code=429,
+            text="rate limited 1",
+        ),
+        FakeResponse({"ok": False}, status_code=429, text="rate limited 2"),
+    ]
+
+    def fake_post(*args, **kwargs):
+        return responses.pop(0)
+
+    monkeypatch.setattr("telegram.requests.post", fake_post)
+    monkeypatch.setattr("telegram.time.sleep", lambda seconds: None)
+    with pytest.raises(RuntimeError):
+        send_digest(["one"], token="T", chat_id="42")
+
+
 def test_oversized_summary_is_truncated_under_limit(make_article):
     articles = [make_article(guid="1", summary="x" * 4500)]
+    messages = format_digest(articles)
+    assert all(len(m) <= telegram.MAX_MESSAGE_CHARS for m in messages)
+    assert "…" in messages[0]
+
+
+def test_entity_dense_summary_stays_under_limit_after_escaping(make_article):
+    articles = [make_article(guid="1", summary="&" * 700)]
     messages = format_digest(articles)
     assert all(len(m) <= telegram.MAX_MESSAGE_CHARS for m in messages)
     assert "…" in messages[0]
