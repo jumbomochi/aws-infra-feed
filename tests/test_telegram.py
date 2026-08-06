@@ -67,3 +67,21 @@ def test_send_digest_raises_on_telegram_error(monkeypatch):
     )
     with pytest.raises(RuntimeError, match="bad"):
         send_digest(["one"], token="T", chat_id="42")
+
+
+def test_oversized_summary_is_truncated_under_limit(make_article):
+    articles = [make_article(guid="1", summary="x" * 4500)]
+    messages = format_digest(articles)
+    assert all(len(m) <= telegram.MAX_MESSAGE_CHARS for m in messages)
+    assert "…" in messages[0]
+
+
+def test_blog_header_never_orphaned_from_first_article(make_article):
+    articles = [
+        make_article(guid=str(i), blog="AAA", title=f"Post {i}", summary="x" * 600)
+        for i in range(6)
+    ] + [make_article(guid="z", blog="ZZZ", title="Last post", summary="y" * 600)]
+    messages = format_digest(articles)
+    for message in messages:
+        if "<b>ZZZ</b>" in message:
+            assert "Last post" in message
