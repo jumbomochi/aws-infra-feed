@@ -7,6 +7,15 @@ import telegram
 from telegram import SGT, format_digest, format_heartbeat, send_digest
 
 
+def test_format_digest_accepts_custom_title(make_article):
+    messages = format_digest(
+        [make_article()],
+        now=datetime(2026, 8, 7, 12, 30, tzinfo=SGT),
+        title="🕰 AWS Throwback",
+    )
+    assert "🕰 AWS Throwback — Fri 07 Aug 2026" in messages[0]
+
+
 def test_heartbeat_carries_date_and_no_news_line():
     message = format_heartbeat(now=datetime(2026, 8, 7, 8, 0, tzinfo=SGT))
     assert "AWS Blog Digest — Fri 07 Aug 2026" in message

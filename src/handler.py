@@ -6,6 +6,7 @@ from feeds import fetch_all_feeds
 from state import filter_new, mark_seen
 from summarize import make_client, summarize
 from telegram import format_digest, format_heartbeat, send_digest
+from throwback import load_pool_batch, mark_thrown
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -18,7 +19,12 @@ MAX_ARTICLES_PER_RUN = 60
 _EPOCH = datetime.min.replace(tzinfo=timezone.utc)
 
 
+THROWBACK_TITLE = "🕰 AWS Throwback"
+
+
 def lambda_handler(event, context):
+    if (event or {}).get("mode") == "throwback":
+        return _throwback_run()
     config = load_config()
     articles = fetch_all_feeds()
     new_articles = filter_new(articles)
@@ -48,3 +54,21 @@ def lambda_handler(event, context):
     # Only after a successful send — a failed run must re-deliver tomorrow.
     mark_seen(new_articles)
     return {"new_articles": len(new_articles), "messages_sent": len(messages)}
+
+
+def _throwback_run():
+    config = load_config()
+    articles = load_pool_batch()
+    if not articles:
+        logger.info("Throwback pool is empty; nothing sent")
+        return {"throwbacks": 0, "messages_sent": 0}
+
+    client = make_client(config.gemini_api_key)
+    for article in articles:
+        article.summary = summarize(client, article)
+
+    messages = format_digest(articles, title=THROWBACK_TITLE)
+    send_digest(messages, config.telegram_bot_token, config.telegram_chat_id)
+    # Same invariant as the digest: mark only after a successful send.
+    mark_thrown([article.guid for article in articles])
+    return {"throwbacks": len(articles), "messages_sent": len(messages)}

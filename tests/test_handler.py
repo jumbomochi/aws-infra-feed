@@ -63,6 +63,41 @@ def test_caps_run_to_newest_articles(wired, monkeypatch, make_article):
     assert {a.guid for a in marked} == {"newest", "middle"}
 
 
+def test_throwback_mode_sends_then_marks(wired, monkeypatch, make_article):
+    calls, _ = wired
+    pool = [make_article(guid="throwback#g1"), make_article(guid="throwback#g2")]
+    monkeypatch.setattr(handler, "load_pool_batch", lambda: pool)
+    monkeypatch.setattr(
+        handler, "mark_thrown", lambda guids: calls.append(("thrown", tuple(guids)))
+    )
+    result = handler.lambda_handler({"mode": "throwback"}, None)
+    assert calls == ["send", ("thrown", ("throwback#g1", "throwback#g2"))]
+    assert result == {"throwbacks": 2, "messages_sent": 1}
+    assert pool[0].summary == "summary of throwback#g1"
+
+
+def test_throwback_mode_empty_pool_sends_nothing(wired, monkeypatch):
+    calls, _ = wired
+    monkeypatch.setattr(handler, "load_pool_batch", lambda: [])
+    result = handler.lambda_handler({"mode": "throwback"}, None)
+    assert calls == []
+    assert result == {"throwbacks": 0, "messages_sent": 0}
+
+
+def test_throwback_failed_send_does_not_mark_thrown(wired, monkeypatch, make_article):
+    calls, _ = wired
+    monkeypatch.setattr(handler, "load_pool_batch", lambda: [make_article()])
+    monkeypatch.setattr(handler, "mark_thrown", lambda guids: calls.append("thrown"))
+
+    def boom(messages, token, chat_id):
+        raise RuntimeError("telegram down")
+
+    monkeypatch.setattr(handler, "send_digest", boom)
+    with pytest.raises(RuntimeError, match="telegram down"):
+        handler.lambda_handler({"mode": "throwback"}, None)
+    assert "thrown" not in calls
+
+
 def test_failed_send_does_not_mark_seen(wired, monkeypatch):
     calls, _ = wired
 

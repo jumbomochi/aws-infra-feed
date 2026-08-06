@@ -21,9 +21,13 @@ def format_heartbeat(now: datetime | None = None) -> str:
     return f"<b>AWS Blog Digest — {now:%a %d %b %Y}</b>\n\nNo new articles today."
 
 
-def format_digest(articles: list[Article], now: datetime | None = None) -> list[str]:
+def format_digest(
+    articles: list[Article],
+    now: datetime | None = None,
+    title: str = "AWS Blog Digest",
+) -> list[str]:
     now = now or datetime.now(SGT)
-    header = f"<b>AWS Blog Digest — {now:%a %d %b %Y}</b>"
+    header = f"<b>{html.escape(title)} — {now:%a %d %b %Y}</b>"
     by_blog: dict[str, list[Article]] = {}
     for article in articles:
         by_blog.setdefault(article.blog, []).append(article)

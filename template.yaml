@@ -21,6 +21,12 @@ Resources:
           Properties:
             # 23:50 UTC = 07:50 SGT; digest lands in Telegram by 08:00 SGT.
             Schedule: cron(50 23 * * ? *)
+        LunchThrowback:
+          Type: Schedule
+          Properties:
+            # 04:30 UTC = 12:30 SGT; posts from the throwback pool until it drains.
+            Schedule: cron(30 4 * * ? *)
+            Input: '{"mode": "throwback"}'
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SeenArticlesTable
